@@ -54,7 +54,7 @@ rm -rf /etc/ssh
 
 sleep 2
 
-# Limpar cache do sistema
+# Limpar cache do sistemas
 echo -e "\e[32m"
 echo " [*] LIMPAR CACHE DO SISTEMA..."
 echo -e "\e[0m"
@@ -72,13 +72,13 @@ apt install openssh-server openssh-client -y
 
 sleep 2
 
-read -p "Deseja ativar o usuario ssh root? (Y/N): " resposta
+read -r "Deseja ativar o usuario ssh root? (Y/N): " resposta
 if [[ $resposta =~ ^[Yy]$ ]]; then
     sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
     sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
     
     echo -e "\e[32m[*] Digite a nova senha para o root:\e[0m"
-    read -s root_pass
+    read -r root_pass
     echo "root:$root_pass" | sudo chpasswd
     
     echo -e "\e[32m[*] Senha configurada e permissões de root aplicadas...\e[0m"
