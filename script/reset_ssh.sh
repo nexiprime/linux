@@ -74,20 +74,44 @@ sleep 2
 
 read -r -p "Deseja ativar o usuario ssh root? (Y/N): " resposta
 if [[ $resposta =~ ^[Yy]$ ]]; then
-    sudo sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config
-    sudo sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config
-    
-    echo -e "\e[32m[*] Digite a nova senha para o root:\e[0m"
-    read -r -s -p "Senha: " root_pass
-    echo ""
-    echo "root:$root_pass" | sudo chpasswd
-    
-    echo -e "\e[32m[*] Senha configurada e permissões de root aplicadas...\e[0m"
+    echo "[*] Ativando login SSH como root com senha..."
+
+    # Garantir diretivas corretas no sshd_config (independente do estado atual)
+    sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin yes/' /etc/ssh/sshd_config
+    sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication yes/' /etc/ssh/sshd_config
+    sed -i 's/^#\?KbdInteractiveAuthentication.*/KbdInteractiveAuthentication yes/' /etc/ssh/sshd_config
+    sed -i 's/^#\?UsePAM.*/UsePAM yes/' /etc/ssh/sshd_config
+
+    # Pedir senha duas vezes (evita erro de digitação)
+    while true; do
+        read -r -s -p "Digite a nova senha do root: " root_pass1
+        echo ""
+        read -r -s -p "Confirme a nova senha do root: " root_pass2
+        echo ""
+
+        if [[ "$root_pass1" == "$root_pass2" && -n "$root_pass1" ]]; then
+            break
+        else
+            echo "As senhas não conferem ou estão vazias. Tente novamente."
+        fi
+    done
+
+    # Aplicar senha corretamente
+    echo "root:$root_pass1" | chpasswd
+
+    # DESBLOQUEAR o usuário root (PASSO CRÍTICO)
+    passwd -u root >/dev/null 2>&1
+
+    # Garantir shell válida
+    usermod -s /bin/bash root
+
+    echo "[✓] SSH root habilitado com senha ativa."
 elif [[ $resposta =~ ^[Nn]$ ]]; then
-    echo "Operação cancelada"
+    echo "Ativação de SSH root ignorada."
 else
-    echo "Resposta inválida. Use Y para sim ou N para não."
+    echo "Resposta inválida. Use Y ou N."
 fi
+
 
 sleep 2 
 
