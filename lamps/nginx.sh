@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ==========================================================
-# Apache2 + PHP (versão mais recente) – Script atualizado
+# Nginx + PHP (versão mais recente) – Script atualizado
 # Compatível com Ubuntu 20.04+
 # ==========================================================
 
@@ -24,15 +24,14 @@ echo "Adicionando repositório PHP (Ondrej)..."
 add-apt-repository ppa:ondrej/php -y
 apt update -y
 
-echo "Instalando Apache2..."
-apt install -y apache2
+echo "Instalando Nginx..."
+apt install -y nginx
 
 echo "Instalando PHP e módulos principais..."
 apt install -y \
 php \
 php-cli \
 php-common \
-libapache2-mod-php \
 php-fpm \
 php-mysql \
 php-pgsql \
@@ -45,17 +44,44 @@ php-zip \
 php-bcmath \
 php-intl
 
-echo "Habilitando módulos do Apache..."
-a2enmod php
-a2enmod rewrite
-a2enmod headers
+echo "Habilitando PHP-FPM..."
+systemctl enable php-fpm
+systemctl start php-fpm
 
-echo "Ajustando prioridade do index.php..."
-sed -i 's/index.html/index.php index.html/' /etc/apache2/mods-enabled/dir.conf
+echo "Configurando Nginx para PHP..."
+cat <<'EOF' > /etc/nginx/sites-available/default
+server {
+    listen 80 default_server;
+    listen [::]:80 default_server;
 
-echo "Reiniciando Apache..."
-systemctl restart apache2
-systemctl enable apache2
+    server_name _;
+
+    root /var/www/html;
+    index index.php index.html index.htm;
+
+    location / {
+        try_files $uri $uri/ =404;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+EOF
+
+echo "Testando configuração do Nginx..."
+nginx -t
+
+echo "Reiniciando Nginx..."
+systemctl restart nginx
+systemctl enable nginx
 
 echo "Criando arquivo de teste PHP..."
 cat <<EOF > /var/www/html/info.php
@@ -72,7 +98,8 @@ chmod -R 755 /var/www/html
 
 echo "--------------------------------------------------"
 echo "Instalação concluída com sucesso"
-echo "Apache: http://$(hostname -I | awk '{print $1}')"
+echo "Nginx: http://$(hostname -I | awk '{print $1}')"
 echo "PHP Info: http://$(hostname -I | awk '{print $1}')/info.php"
-echo "Versão do PHP instalada:" php -v | head -n 1
+echo "Versão do PHP instalada:"
+php -v | head -n 1
 echo "--------------------------------------------------"
